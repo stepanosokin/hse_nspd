@@ -1,0 +1,15 @@
+[project]
+name = "hse-nspd"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "geopandas>=1.1.1",
+    "requests>=2.32.4",
+    "shapely>=2.1.1",
+    "vgdb-general",
+]
+
+[tool.uv.sources]
+vgdb-general = { git = "https://github.com/stepanosokin/vgdb_general.git" }
