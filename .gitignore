@@ -8,7 +8,8 @@ wheels/
 
 # Virtual environments
 .venv
-tiles.gpkg
+
 tiles.gpkg-shm
 tiles.gpkg-wal
 results/
+hse_nspd.qgz
