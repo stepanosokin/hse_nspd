@@ -39,7 +39,7 @@ def request_refresh_token(s: Session, refresh_token=''):    # работает
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0"        
     }
     url = 'https://sso.nspd.gov.ru/oauth2/token'
-    # status, result = smart_http_request(s, url=url, method='post', data=payload, headers=headers)
+    # status, response = smart_http_request(s, url=url, method='post', data=payload, headers=headers)
     response = s.post(url, data=payload, headers=headers, verify=False)
     if response.status_code == 200:
         result = json.loads(response.text)
@@ -148,7 +148,7 @@ def download_nspd_layer(
         geojson_result_path = os.path.join(current_dir, 'results', f"{tiles_layer}_{layer_alias}.json")
         with open(geojson_result_path, 'w', encoding='utf-8') as of:
             json.dump(geojson_result, of, ensure_ascii=False)
-            return True
+            return (access_token, refresh_token, auth_access_token_expires)
 
 
 if __name__ == '__main__':
@@ -167,18 +167,18 @@ if __name__ == '__main__':
     
     # Перед использованием нужно зайти на https://nspd.gov.ru/map браузером, залогиниться, включить нужный слой на карте,
     # и скопировать значение access_token, refresh_token и auth_access_token_expires из cookie любого запроса GetMap.
-    # После этого оставить страницу висеть. (?)
+    
     
     # ЗАМЕНИТЬ!!!
-    access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU1OTgwOTMzLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTU5NzkxMzMsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiMGU1ZGU0NTAtZjhhMS00N2JlLWFkYjEtZTZiNWM1OTg1MDc1IiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWIyYjg0MDgtZWIwNy00ODJkLWJlZTctZTIzZTYzYTBhMzBhIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NTk3OTEzMn0.evMtyedo-8BVqimB-7Z-Gb3_Ix2V8F4XPF7_UKSZzwcrNmMWX9fCOLPwzdyN2aiWIdsMTA2U-IYfAD3duAwITAZ45mxB8SHBsfTA0S9gIUFAilVOGToLZ15KOHUx5tK-oJ01vbTwsmTzao1rlPcIsSlFQL3tMfepUwgCyZY6jGUcB4njUDP7MP2wJtWUBuV3F-P3ulxq1OlaKaFRpF9flrhi3dgIQnPD4Mjff86viNacpkwXceMmIfJltr0PZwKcfqLwTNqIxdqSq4-FFVXO3LMht90kak9OKXdShWiSxOCmGwGQvtuRrdyO_4dKOdONVKuq382jDo2qYsa1uD50UfQy5jIqvxcxBtpJzMX1Lc_Pn1MrcpkNeWMlZhvWwg-31MJOAf1EvADaKOfNoN28Dz33UHpS4UKD0X0sgSTYfnWPpUSn-qaH6g48EyZROpEd6YAz0X232LH2n1NPhGDgiCRT3Hjrb_AjCCO4qktfTlOP2kmaRiVpxUyS9l-osL3YpOXlYHQbizW_91wTnc3bIktLeTOZPQTlvXFs9YANy6ArRJEKcMyh6BbTNuDCSKFo5EQpk8JyMjMTHeEm8ZHhgr42bgWvA9h0LQrBpvsfa5MVL1EtiDDmo7DN5amJMeYDQEj_x0koYY-Wlfu9V5QtuNON5fYVRbpO9EyrTH4HCDk'
-    auth_access_token_expires = '%222025-08-23T20%3A28%3A53.980Z%22'
-    refresh_token = 'c7M7Bt6tuaf7AnI6WnaLifB1clDlcjOlZSQOcsq29cHbALt8J2cXwvUfgFWH8UqQbE18gzbihpAvxk48yj'
+    access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU2MDE2MTYwLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTYwMTQzNjAsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiYjZmM2FlZjYtZjVhYS00MDUwLWFlNWUtY2IwN2E0MjQwYzBhIiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWIyYjg0MDgtZWIwNy00ODJkLWJlZTctZTIzZTYzYTBhMzBhIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NjAxNDM1OX0.cFwxfgsemLKEzWx-bIAlSI0amLRP66vceiQBGPYSXk0WmqGk9PZVoLlTsOiLF3zcrWRuY-LOf-k7wT7j10GUu6hQiqEDrhaR3x2kGy0LqfSHl-9cB9LjVqbg8NoMS-LGU6NduBLK1SZj1sdgDRj2YjemmLmmSYEl1S8DKe-nlvyJ6HCVf4cpsgHwEtyoKCuVNHrI7DKA2Gxj29tBFFnJULesX46W_EpV3jKQ9mkSLoexmPzaWpzWwyW5prPI4qgMRqQXCfV4e_-TsYcyaIwi10vMGcw_70ouQcExRxPSLul2YoHlpBS6jCYyHDZi9UgKbSiOyHn-AWeHGr3EbAP1VUdkRH5kfEG4kI48mZnqMzbfz5R-Dxp3joLK0FfyQGdRrPMw-F6F_r3Vj9FfuhI4Qs0yywJh8BA96oHSyZTklgHyqHnnlKD4MmIbev8FVR-sogtmA_XCeTuEYIj9csDLaGWH7Z2Rq8d7UfwMbNUYbkNLzsHzx_pHtAjiazIkdpCG7rrfx6deLaXiIPFQqvawgBXihK4-b-GiXbFKYv-WVsg_9nUF8J61TnDvmlyDLBdAt4Rgoqo-CCl_AYX1jNpfsvUB8uePWNXv0czgBA7v_RRBcdkgz88pIE61gObMQp_0e2PSUe7JpPxJt1_rnn_Dprol13GN6KhTGbhrUPouoOw'
+    auth_access_token_expires = '%222025-08-24T06%3A16%3A00.521Z%22'
+    refresh_token = 'c7M7affFxZgI5puxWsRNH0SFMjBXpqiIbgkxkEFOvWnCYprkX8ShBkgTtN9zWu9fvYSAJdylTh6WW6EC0u'
     
     
     
     for layer in nspd_layers:
-        if layer['shortname'] == 'югра_местор_пи_пол':
-            download_nspd_layer(
+        if layer['shortname'] == 'югра_маг_труб':
+            access_token, refresh_token, auth_access_token_expires = download_nspd_layer(
                 nspd_layer=layer['id'],
                 layer_alias=layer['shortname'],
                 tiles_gpkg='tiles.gpkg',
