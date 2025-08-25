@@ -3,14 +3,29 @@ from vgdb_general import smart_http_request
 import geopandas as pd
 import os
 import json
-import brotli
+import brotli                                       # это нужно, чтобы requests умела декодировать br                       
 from datetime import datetime, timezone, timedelta
 import pytz
 from tqdm import tqdm
 import urllib3
 
 
-def request_refresh_token(s: Session, refresh_token=''):    # работает
+def request_refresh_token(s: Session, refresh_token=''):
+    """Функция обновляет токен авторизации на Госуслугах
+
+    Args:
+        s (Session): активная сессия Requests.Session, в которой происходит работа
+        refresh_token (str, optional): Токен обновления. Defaults to ''.
+
+    Raises:
+        Exception: Если запрос обновления токена взвращает статус не 200, вызывается Exception с сообщением 'Не удалось обновить токен. Результат запроса: {result.content}'
+
+    Returns:
+        json: словарь со значениями: 
+        access_token - новый ключ доступа, 
+        refresh_token - новый токен обновления ключа доступа, 
+        expires_in - срок истечения нового ключа доступа в UTC
+    """
     # client_secret = 'MIINVwYJKoZIhvcNAQcCoIINSDCCDUQCAQExDDAKBggqhQMHAQECAjALBgkqhkiG9w0BBwGgggkDMIII_zCCCKygAwIBAgIQW9YkNOjmFO0v521L0IXrEzAKBggqhQMHAQEDAjCCAWExIDAeBgkqhkiG9w0BCQEWEXVjX2ZrQHJvc2them5hLnJ1MRgwFgYDVQQIDA83NyDQnNC-0YHQutCy0LAxFTATBgUqhQNkBBIKNzcxMDU2ODc2MDEYMBYGBSqFA2QBEg0xMDQ3Nzk3MDE5ODMwMWAwXgYDVQQJDFfQkdC-0LvRjNGI0L7QuSDQl9C70LDRgtC-0YPRgdGC0LjQvdGB0LrQuNC5INC_0LXRgNC10YPQu9C-0LosINC0LiA2LCDRgdGC0YDQvtC10L3QuNC1IDExGTAXBgNVBAcMENCzLiDQnNC-0YHQutCy0LAxCzAJBgNVBAYTAlJVMS4wLAYDVQQKDCXQmtCw0LfQvdCw0YfQtdC50YHRgtCy0L4g0KDQvtGB0YHQuNC4MTgwNgYDVQQDDC_QpNC10LTQtdGA0LDQu9GM0L3QvtC1INC60LDQt9C90LDRh9C10LnRgdGC0LLQvjAeFw0yNDA4MDIxMjMxMDNaFw0yNTEwMjYxMjMxMDNaMIIB8DELMAkGA1UEBhMCUlUxGTAXBgNVBAgMENCzLiDQnNC-0YHQutCy0LAxMjAwBgNVBAkMKdGD0LsuINCS0L7RgNC-0L3RhtC-0LLQviDQv9C-0LvQtSwg0LQuNNCwMRUwEwYDVQQHDAzQnNC-0YHQutCy0LAxgZAwgY0GA1UECgyBhdCk0JXQlNCV0KDQkNCb0KzQndCQ0K8g0KHQm9Cj0JbQkdCQINCT0J7QodCj0JTQkNCg0KHQotCS0JXQndCd0J7QmSDQoNCV0JPQmNCh0KLQoNCQ0KbQmNCYLCDQmtCQ0JTQkNCh0KLQoNCQINCYINCa0JDQoNCi0J7Qk9Cg0JDQpNCY0JgxGDAWBgUqhQNkARINMTA0Nzc5Njk0MDQ2NTEVMBMGBSqFA2QEEgo3NzA2NTYwNTM2MSQwIgYJKoZIhvcNAQkBFhUwMF9vemlsMUByb3NyZWVzdHIucnUxgZAwgY0GA1UEAwyBhdCk0JXQlNCV0KDQkNCb0KzQndCQ0K8g0KHQm9Cj0JbQkdCQINCT0J7QodCj0JTQkNCg0KHQotCS0JXQndCd0J7QmSDQoNCV0JPQmNCh0KLQoNCQ0KbQmNCYLCDQmtCQ0JTQkNCh0KLQoNCQINCYINCa0JDQoNCi0J7Qk9Cg0JDQpNCY0JgwZjAfBggqhQMHAQEBATATBgcqhQMCAiQABggqhQMHAQECAgNDAARAncHiBpT5hZi7kZb56fbzY5aKGGryq-bvSk5b-cRfy8Bj6_EXcSF2ZS9MHVG39usPSdREzeQyT3-TOd87XLN99KOCBKQwggSgMA4GA1UdDwEB_wQEAwID-DAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwEwYDVR0gBAwwCjAIBgYqhQNkcQEwDAYFKoUDZHIEAwIBATAtBgUqhQNkbwQkDCLQmtGA0LjQv9GC0L7Qn9GA0L4gQ1NQICg1LjAuMTIwMDApMIIBoQYFKoUDZHAEggGWMIIBkgyBh9Cf0YDQvtCz0YDQsNC80LzQvdC-LdCw0L_Qv9Cw0YDQsNGC0L3Ri9C5INC60L7QvNC_0LvQtdC60YEgVmlQTmV0IFBLSSBTZXJ2aWNlICjQvdCwINCw0L_Qv9Cw0YDQsNGC0L3QvtC5INC_0LvQsNGC0YTQvtGA0LzQtSBIU00gMjAwMFEyKQxo0J_RgNC-0LPRgNCw0LzQvNC90L4t0LDQv9C_0LDRgNCw0YLQvdGL0Lkg0LrQvtC80L_Qu9C10LrRgSDCq9Cu0L3QuNGB0LXRgNGCLdCT0J7QodCiwrsuINCS0LXRgNGB0LjRjyA0LjAMTUPQtdGA0YLQuNGE0LjQutCw0YIg0YHQvtC-0YLQstC10YLRgdGC0LLQuNGPIOKEltCh0KQvMTI0LTQzMjgg0L7RgiAyOS4wOC4yMDIyDE1D0LXRgNGC0LjRhNC40LrQsNGCINGB0L7QvtGC0LLQtdGC0YHRgtCy0LjRjyDihJbQodCkLzEyOC00NjM5INC-0YIgMDQuMTAuMjAyMzBmBgNVHR8EXzBdMC6gLKAqhihodHRwOi8vY3JsLnJvc2them5hLnJ1L2NybC91Y2ZrXzIwMjQuY3JsMCugKaAnhiVodHRwOi8vY3JsLmZrLmxvY2FsL2NybC91Y2ZrXzIwMjQuY3JsMHcGCCsGAQUFBwEBBGswaTA0BggrBgEFBQcwAoYoaHR0cDovL2NybC5yb3NrYXpuYS5ydS9jcmwvdWNma18yMDI0LmNydDAxBggrBgEFBQcwAoYlaHR0cDovL2NybC5may5sb2NhbC9jcmwvdWNma18yMDI0LmNydDAdBgNVHQ4EFgQUHpmFbGT-Z7mBm0OSmgon7jPgzs0wggF2BgNVHSMEggFtMIIBaYAUBmQTp87gg-KmfZ-Jp9ZWGZhM2aehggFDpIIBPzCCATsxITAfBgkqhkiG9w0BCQEWEmRpdEBkaWdpdGFsLmdvdi5ydTELMAkGA1UEBhMCUlUxGDAWBgNVBAgMDzc3INCc0L7RgdC60LLQsDEZMBcGA1UEBwwQ0LMuINCc0L7RgdC60LLQsDFTMFEGA1UECQxK0J_RgNC10YHQvdC10L3RgdC60LDRjyDQvdCw0LHQtdGA0LXQttC90LDRjywg0LTQvtC8IDEwLCDRgdGC0YDQvtC10L3QuNC1IDIxJjAkBgNVBAoMHdCc0LjQvdGG0LjRhNGA0Ysg0KDQvtGB0YHQuNC4MRgwFgYFKoUDZAESDTEwNDc3MDIwMjY3MDExFTATBgUqhQNkBBIKNzcxMDQ3NDM3NTEmMCQGA1UEAwwd0JzQuNC90YbQuNGE0YDRiyDQoNC-0YHRgdC40LiCCmwJwHYAAAAACYwwCgYIKoUDBwEBAwIDQQAvqmRe2MK9ALBRo97pb3f67iP8ek3WGUfv91pT-c3lVvMWTRn-MQbeKtAmsJQ0wmOGPjsEgjLtd8JMUJUJDI3RMYIEGzCCBBcCAQEwggF3MIIBYTEgMB4GCSqGSIb3DQEJARYRdWNfZmtAcm9za2F6bmEucnUxGDAWBgNVBAgMDzc3INCc0L7RgdC60LLQsDEVMBMGBSqFA2QEEgo3NzEwNTY4NzYwMRgwFgYFKoUDZAESDTEwNDc3OTcwMTk4MzAxYDBeBgNVBAkMV9CR0L7Qu9GM0YjQvtC5INCX0LvQsNGC0L7Rg9GB0YLQuNC90YHQutC40Lkg0L_QtdGA0LXRg9C70L7Quiwg0LQuIDYsINGB0YLRgNC-0LXQvdC40LUgMTEZMBcGA1UEBwwQ0LMuINCc0L7RgdC60LLQsDELMAkGA1UEBhMCUlUxLjAsBgNVBAoMJdCa0LDQt9C90LDRh9C10LnRgdGC0LLQviDQoNC-0YHRgdC40LgxODA2BgNVBAMML9Ck0LXQtNC10YDQsNC70YzQvdC-0LUg0LrQsNC30L3QsNGH0LXQudGB0YLQstC-AhBb1iQ06OYU7S_nbUvQhesTMAoGCCqFAwcBAQICoIICOzAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwGCSqGSIb3DQEJBTEPFw0yNTA4MjAxMjEyNTFaMC8GCSqGSIb3DQEJBDEiBCBvS9MhpS8A7-f05OFc0DENfstByjBIqlWV4nmcdH2IfzCCAc4GCyqGSIb3DQEJEAIvMYIBvTCCAbkwggG1MIIBsTAKBggqhQMHAQECAgQglqo-0XHSoqxmai7UR7xMrVhgEYj_TrAx5PC-PyKeWEEwggF_MIIBaaSCAWUwggFhMSAwHgYJKoZIhvcNAQkBFhF1Y19ma0Byb3NrYXpuYS5ydTEYMBYGA1UECAwPNzcg0JzQvtGB0LrQstCwMRUwEwYFKoUDZAQSCjc3MTA1Njg3NjAxGDAWBgUqhQNkARINMTA0Nzc5NzAxOTgzMDFgMF4GA1UECQxX0JHQvtC70YzRiNC-0Lkg0JfQu9Cw0YLQvtGD0YHRgtC40L3RgdC60LjQuSDQv9C10YDQtdGD0LvQvtC6LCDQtC4gNiwg0YHRgtGA0L7QtdC90LjQtSAxMRkwFwYDVQQHDBDQsy4g0JzQvtGB0LrQstCwMQswCQYDVQQGEwJSVTEuMCwGA1UECgwl0JrQsNC30L3QsNGH0LXQudGB0YLQstC-INCg0L7RgdGB0LjQuDE4MDYGA1UEAwwv0KTQtdC00LXRgNCw0LvRjNC90L7QtSDQutCw0LfQvdCw0YfQtdC50YHRgtCy0L4CEFvWJDTo5hTtL-dtS9CF6xMwCgYIKoUDBwEBAQEEQOaqaTaJbqbwv917bz2BbcfUL1mEjDZln5gW42St6w2y3UKS8tI4V3G_MlOlwTRSzel4SjuRlZIGdBoCispnhJg%3D'
     payload = {
         "grant_type": "refresh_token",
@@ -43,21 +58,9 @@ def request_refresh_token(s: Session, refresh_token=''):    # работает
     response = s.post(url, data=payload, headers=headers, verify=False)
     if response.status_code == 200:
         result = json.loads(response.text)
-        # print('Token refreshed successfully!')
-        # print(result)
-        # pass
         return result
     else:
-        pass
-        raise Exception(f"Не удалось обновить токен. Результат запроса: {result.content}")
-        print(f"Не удалось обновить токен. Результат запроса: {result.content}")
-        return None
-    # pass
-    # if status == 200:
-    #     # return result.json()
-    #     decoded = result.content.decode('cp1251')
-    #     pass
-    # return None
+        raise Exception(f"Не удалось обновить токен. Результат запроса: {result.content}")    
 
 
 def download_nspd_layer(
@@ -65,13 +68,62 @@ def download_nspd_layer(
     tiles_gpkg='tiles.gpkg', tiles_layer='khmao',
     width=512, height=512, i_from=0, i_to=512,
     j_from=0, j_to=512, pixel_step=3,
-    cookie='',
     access_token='',
     refresh_token='',
     auth_access_token_expires=''
 ):
+    """Функция выполняет выгрузку данных из заданного слоя (WMS-сервиса) НСПД через запрос GetFeatureInfo методом скользящего окна. 
+    на вход неоходимо подать Geopackage со слоем тайлов, по которым будет происходить парсинг. 
+    Внутри каждого тайла происходит перебор пикселей через заданный шаг, и в каждом пикселе выполняется GetFeatureInfo. 
+    После этого объекты с уникальными id записываются в GeoJSON в папку results. Папка results должна существовать. 
+    Самое главное - это подать на вход начальное значение access_token, refresh_token и auth_access_token_expires для API Госуслуг. 
+    Это нужно для того, чтобы программа могла обновлять токен аутентификации Госуслуг и  продолжать работу даже после истечения исходного токена. 
+    Чтобы получить исходные значения access_token, refresh_token и auth_access_token_expires, нужно в Google Chrome зайти на сайт 
+    https://nspd.gov.ru/map, залогиниться через Госуслуги (часть слоев на карте доступны и без логина. Если нужны эти слои, то логиниться не обязательно). 
+    Затем включить devtools (F12), перейти в раздел Network. 
+    На странице включить любой тематический слой. После этого в devtools найти любой запрос GetMap. 
+    В нем есть Cookie, где кроме прочего записаны текущие значения authAccessToken, authAccessTokenExpires, authRefreshToken. 
+    Их надо скопировать и подать на вход функции.
+    ВНИМАНИЕ! Есть риск, что работа данной функции будет расценена как DDOS-атака на сайт nspd.gov.ru. 
+    Кроме этого, если выполнен логин на Госуслугах, то токен привязывается к этой учетной записи и она отслеживается.
+
+    Args:
+        nspd_layer (str, optional): идентификатор слоя на сервере nspd.gov.ru/map. Соответствует отдельному WMS. 
+        Чтобы узнать идентификатор нужного вам слоя, включите его на карте, найдите соответствующий запрос GetMap в Devtools/Network. 
+        Идентификатор вшит в URL запроса. Defaults to '36281'.
+        layer_alias (str, optional): любое краткое название слоя. Будет использовано как имя файла результата. Defaults to 'result'.
+        tiles_gpkg (str, optional): Относительный путь к Geopackage со слоем тайлов. Defaults to 'tiles.gpkg'.
+        tiles_layer (str, optional): Слой с тайлами. Тайлы можно создать в QGIS инструментом Create grid. 
+        Рекомендуемый размер тайлов 78271.517000 x 78271.517000 м. Проекция EPSG:3857. Defaults to 'khmao'.
+        width (int, optional): Ширина тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 512.
+        height (int, optional): Высота тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 512.
+        i_from (int, optional): Начало отсчета столбцов пикселов. Defaults to 0.
+        i_to (int, optional): Конец отсчета столбцов пикселов. Не может быть больше чем ширина тайла. Defaults to 512.
+        j_from (int, optional): Начало отсчета строк пикселов. Defaults to 0.
+        j_to (int, optional): Конец отсчета строк пикселов. Не может быть больше чем высота тайла. Defaults to 512.
+        pixel_step (int, optional): Шаг перебора пикселов. Может быть от 1 до любого значения (не больше минимального из ширины/высоты). 
+        Это промежуток, через который будет выполняться запрос GetFeatureInfo в пикселе. Если 1, то запрос будет в каждом пикселе.
+        Общее количество запросов обратно пропорционально квадрату этого шага. Для среднестатистического региона РФ нет смысла брать меньше 3,
+        т.к. иначе парсинг выпоняется очень долго. Для больших регионов, как ХМАО, протестирован шаг 5. Defaults to 3.
+        access_token (str, optional): Ключ безопасности, первоначальное згачение. Чтобы его получить, нужно в Google Chrome зайти на сайт 
+        https://nspd.gov.ru/map, залогиниться через Госуслуги (часть слоев на карте доступны и без логина. Если нужны эти слои, то логиниться не обязательно). 
+        Затем включить devtools (F12), перейти в раздел Network. 
+        На странице включить любой тематический слой. После этого в devtools найти любой запрос GetMap. 
+        В нем есть Cookie, из которого надо скопировать authAccessToken.
+        refresh_token (str, optional): Ключ обновления ключа безопасности, первоначальное значение. Получать аналогично access_token,
+        но взять параметр authRefreshToken. Defaults to ''.
+        auth_access_token_expires (str, optional): срок истечения ключа безопасности, первоначальное значение. Получать аналогично access_token,
+        но взять параметр authAccessTokenExpires. Пример - %222025-08-24T06%3A16%3A00.521Z%22. Defaults to ''.
+
+    Returns:
+        tuple: В случае успешного выполнения, функция сохраняет загруженные данные в файл results/<tiles_layer>_<layer_alias>.json
+        в формате GeoJSON, А ТАКЖЕ возвращает кортеж с последними актуальными значениями access_token, refresh_token, auth_access_token_expires.
+        Это можно для запуска функции в цикле для нескольких слоев.
+    """
+    # Это чтобы не валились постоянно сообщения о неподтвержденности сертификата. Российские сертификаты сейчас все неподтвержденные.
     from urllib3.exceptions import InsecureRequestWarning
     urllib3.disable_warnings(InsecureRequestWarning)
+    
     auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
     auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
     utc_tz = pytz.timezone('utc')
@@ -152,6 +204,7 @@ def download_nspd_layer(
 
 
 if __name__ == '__main__':
+    # Это пример отдельных слоев, которые можно парсить. Функции download_nspd_layer надо кроме прочего подать на вход id слоя
     nspd_layers = [
         {"shortname": "югра_маг_труб", "id": "847064", "fullname": "ЮГРА - Магистральные трубопроводы для транспортировки жидких и газообразных углеводородов"},
         {"shortname": "югра_доб_транс_газ", "id": "848517", "fullname": "ЮГРА - Объекты добычи и транспортировки газа"},
@@ -163,38 +216,43 @@ if __name__ == '__main__':
         {"shortname": "югра_местор_пи_тчк", "id": "848623", "fullname": "ЮГРА - Месторождения и проявления полезных ископаемых (точка)"},
         {"shortname": "югра_функц_зон", "id": "847282", "fullname": "ЮГРА - Функциональные зоны"}
     ]
-    # # cookie = "_ym_uid=1755248586340956431; _ym_d=1755248586; _ym_isad=1; authAccessToken=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU1MjU1OTgxLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTUyNTQxODEsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiMzYzODIyYWEtYjI1My00ZjZmLWFkZTYtZDYwNGZhNzAwN2U4IiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiZjU3YzI3NjQtZmFhZi00YzJhLTlhYTktMzNjODM1YjY1NDVhIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NTI0ODc3OH0.De_xZq6xAQ3wePuaNbhAmIN8vbFPCdzdt8kRA7iX55QfYUSQfA_xpkE0GyYTI35rLotGX-NauvJUS-Vt4cdJzqzOOByeidk0fL6ZF9Xl2fnp9MyU6L3Bqqt2usx_Tx-lcyLR3doOUVkAdWtyihPMSH86XuB1hsf1EMwgSC5nTGcaC6wF0U0e3Cx8s4n1gbecHKVuT7gHuhDy06Iq9VZxCHO1JRlFiJfUHdG-8XGTWVh1UVnmpRYHSM3d-MG9-sscQ6EpyfDn1pXAMDJgMzFfg2IGa0b2MBSG7tOwVCTW1vqWB2I8cj8mjbgL4Zur0p8FY2l1CoqXirktCJ29vkExqAuo8_3fSEH4qKQbqlfwqoh0GcMvTFvioKUYJMPhlawnWEWVogcLtb6GAj523HkvPtln-LHwfX_TjjMu0ElFOnwRbePzVKgzXNzd8adDYIrAe9STwDbwyfnxRnHzWz8g6O2S_zJ0iTvI_h-XqqTeB_TM9YT7LwhFvG6_ihCcvwioMkVzZmMLX_NKu-tS36AU2Gdh4WbraD6b1vK6ztjUzh4lIPL8N4shMfGfY8DqJcnWXDg8fP8VNDGzlkQ8VuhWxuqtfCVZ13yBogrJl5ypKST7_9RYXevl3SyWWqvv93KVO7choKnyCaa_1u64AShO1pVWF9HX61VnsXzStkJzLg8; authAccessTokenExpires=%222025-08-15T11%3A06%3A23.127Z%22; authRefreshToken=c7Lyxrst15Ho028RyB7HNS5NqcUAtR6GCUobkXUoHVatbFN3Bg9xWeQHGBZMhE8HwB0prL40ssq7ZGJiQK"
     
     # Перед использованием нужно зайти на https://nspd.gov.ru/map браузером, залогиниться, включить нужный слой на карте,
     # и скопировать значение access_token, refresh_token и auth_access_token_expires из cookie любого запроса GetMap.
-    
-    
+    # Пример cookie:
+    # _ym_uid=1756110247627323266; _ym_d=1756110247; _ym_isad=1; 
+    # authAccessToken=eyJhbGci<тут длинющая строка>; authAccessTokenExpires=%222025-08-25T10%3A01%3A11.688Z%22; 
+    # authRefreshToken=c7M8ixRGrknyW4xuDAkcQxRdWbhluEvR6Qf7Ki70aL2ALxLyaJqfj0p3knOQOqu4o7w1ZZeAQRNQrafJy5
+    #
+    # В этом примере:
+    # access_token = 'eyJhbGci<тут длинющая строка>'
+    # auth_access_token_expires = '%222025-08-25T10%3A01%3A11.688Z%22'
+    # refresh_token = 'c7M8ixRGrknyW4xuDAkcQxRdWbhluEvR6Qf7Ki70aL2ALxLyaJqfj0p3knOQOqu4o7w1ZZeAQRNQrafJy5'
+       
     # ЗАМЕНИТЬ!!!
     access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU2MDE2MTYwLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTYwMTQzNjAsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiYjZmM2FlZjYtZjVhYS00MDUwLWFlNWUtY2IwN2E0MjQwYzBhIiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWIyYjg0MDgtZWIwNy00ODJkLWJlZTctZTIzZTYzYTBhMzBhIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NjAxNDM1OX0.cFwxfgsemLKEzWx-bIAlSI0amLRP66vceiQBGPYSXk0WmqGk9PZVoLlTsOiLF3zcrWRuY-LOf-k7wT7j10GUu6hQiqEDrhaR3x2kGy0LqfSHl-9cB9LjVqbg8NoMS-LGU6NduBLK1SZj1sdgDRj2YjemmLmmSYEl1S8DKe-nlvyJ6HCVf4cpsgHwEtyoKCuVNHrI7DKA2Gxj29tBFFnJULesX46W_EpV3jKQ9mkSLoexmPzaWpzWwyW5prPI4qgMRqQXCfV4e_-TsYcyaIwi10vMGcw_70ouQcExRxPSLul2YoHlpBS6jCYyHDZi9UgKbSiOyHn-AWeHGr3EbAP1VUdkRH5kfEG4kI48mZnqMzbfz5R-Dxp3joLK0FfyQGdRrPMw-F6F_r3Vj9FfuhI4Qs0yywJh8BA96oHSyZTklgHyqHnnlKD4MmIbev8FVR-sogtmA_XCeTuEYIj9csDLaGWH7Z2Rq8d7UfwMbNUYbkNLzsHzx_pHtAjiazIkdpCG7rrfx6deLaXiIPFQqvawgBXihK4-b-GiXbFKYv-WVsg_9nUF8J61TnDvmlyDLBdAt4Rgoqo-CCl_AYX1jNpfsvUB8uePWNXv0czgBA7v_RRBcdkgz88pIE61gObMQp_0e2PSUe7JpPxJt1_rnn_Dprol13GN6KhTGbhrUPouoOw'
     auth_access_token_expires = '%222025-08-24T06%3A16%3A00.521Z%22'
-    refresh_token = 'c7M7affFxZgI5puxWsRNH0SFMjBXpqiIbgkxkEFOvWnCYprkX8ShBkgTtN9zWu9fvYSAJdylTh6WW6EC0u'
+    refresh_token = 'c7M7affFxZgI5puxWsRNH0SFMjBXpqiIbgkxkEFOvWnCYprkX8ShBkgTtN9zWu9fvYSAJdylTh6WW6EC0u'    
     
-    
-    
+    # пример того, как можно перебирать слои в цикле и парсить по очереди.
     for layer in nspd_layers:
-        if layer['shortname'] == 'югра_маг_труб':
+        if layer['shortname'] == 'югра_маг_труб':   # это просто чтобы парсить какой-то один слой, можно и убрать
             access_token, refresh_token, auth_access_token_expires = download_nspd_layer(
-                nspd_layer=layer['id'],
-                layer_alias=layer['shortname'],
+                nspd_layer=layer['id'],                     # идентификатор слоя, взятый из URL запроса на nspd.gov.ru/map
+                layer_alias=layer['shortname'],             # любое короткое имя слоя
                 tiles_gpkg='tiles.gpkg',
-                tiles_layer='khmao',
-                width=128, height=128, 
-                i_from=0, i_to=128, j_from=0, j_to=128, 
-                pixel_step=9,
-                # cookie=cookie,
-                access_token=access_token,
+                tiles_layer='khmao',                        # В Geopackage должен быть этот слой с тайлами
+                width=128, height=128,                      # рекомендованные значения для размера тайла 78271.517x78271.517
+                i_from=0, i_to=128, j_from=0, j_to=128,     # в общем случае, должно совпадать с widht и height
+                pixel_step=9,                               # Для ХМАО рекомендовано 9. Для регионов поменьше можно 3.
+                access_token=access_token,                  # при первом запуске цикла берутся значения, заданные в разделе "ЗАМЕНИТЬ!!!". Потом будут браться автоматом из данных, возвращаемых функцией.
                 refresh_token=refresh_token,
                 auth_access_token_expires=auth_access_token_expires
             )
-    
-    # # Это работает
-    # with Session() as s:
-    #     token_response = request_refresh_token(s, refresh_token=refresh_token)
-    #     pass
-    
-    pass
+
+# Запуск скрипта:
+# 1. Установить uv https://docs.astral.sh/uv/getting-started/installation/
+# 2. в папке проекта: uv sync
+# 3. Заменить значения в разделе "ЗАМЕНИТЬ!!!"
+# 4. Запустить данный файл в IDE или командой uv run hse_nspd.py
+#    Будет отображен прогресс-бар по перебору тайлов
