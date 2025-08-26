@@ -33,7 +33,7 @@
    5) в devtools в разделе Network внизу найти последний запрос GetMap. Выделить его. Во вкладке Headers вверху будет URL вида https://nspd.gov.ru/api/aeggis/v3/848579/wms?REQUEST=GetMap&SERVICE=WMS&VERSION=... В данном случае идентификатор слоя 848579. Записать нужные идентификаторы.
 2) Подготовить Geopackage со слоем, содержащим тайлы, по которым будет происходить парсинг. Удобно использовать QGIS и инструмент Create grid. Рекомендуемый размер тайлов 78271.517 x 78271.517 м. Проекция EPSG:3857. Тайлы должны покрывать всю территорию парсинга. Geopackage сохранить в папку проекта.
 3) Создать в папке проекта папку results.
-4) Определить начальные значения ключа доступа (access_token), ключа обновления (refresh_token) и срока действия ключа доступа (auth_access_token_expires). Заменить ими значениями соответствующих переменных в строках 233-235. Для этого:
+4) Определить начальные значения ключа доступа (access_token), ключа обновления (refresh_token) и срока действия ключа доступа (auth_access_token_expires). Заменить ими значения соответствующих переменных в строках 233-235. Для этого:
    1) аналогично предыдущему шагу, найти любой из запросов GetMap. В Разделе Request Headers будет Cookie. Из него и надо взять значения. access_token - это параметр authAccessToken, refresh_token - это параметр authRefreshToken, auth_access_token_expires - это параметр authAccessTokenExpires. Пример cookie:
    ```
    _ym_uid=1756110247627323266; _ym_d=1756110247; _ym_isad=1;authAccessToken=eyJhbGci<тут длинющая строка>; authAccessTokenExpires=%222025-08-25T10%3A01%3A11.688Z%22;authRefreshToken=c7M8ixRGrknyW4xuDAkcQxRdWbhluEvR6Qf7Ki70aL2ALxLyaJqfj0p3knOQOqu4o7w1ZZeAQRNQrafJy5
