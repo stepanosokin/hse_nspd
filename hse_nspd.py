@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import pytz
 from tqdm import tqdm
 import urllib3
+from time import sleep
 
 
 def request_refresh_token(s: Session, refresh_token=''):
@@ -66,16 +67,17 @@ def request_refresh_token(s: Session, refresh_token=''):
 def download_nspd_layer(
     nspd_layer='36281', layer_alias='result',
     tiles_gpkg='tiles.gpkg', tiles_layer='khmao',
-    width=512, height=512, i_from=0, i_to=512,
-    j_from=0, j_to=512, pixel_step=3,
+    width=128, height=128, i_from=0, i_to=128,
+    j_from=0, j_to=128, pixel_step=3,
     access_token='',
     refresh_token='',
-    auth_access_token_expires=''
+    auth_access_token_expires='',
+    pause=0
 ):
     """Функция выполняет выгрузку данных из заданного слоя (WMS-сервиса) НСПД через запрос GetFeatureInfo методом скользящего окна. 
     на вход неоходимо подать Geopackage со слоем тайлов, по которым будет происходить парсинг. 
     Внутри каждого тайла происходит перебор пикселей через заданный шаг, и в каждом пикселе выполняется GetFeatureInfo. 
-    После этого объекты с уникальными id записываются в GeoJSON в папку results. Папка results должна существовать. 
+    После этого объекты с уникальными id записываются в GeoJSON в папку results.  
     Самое главное - это подать на вход начальное значение access_token, refresh_token и auth_access_token_expires для API Госуслуг. 
     Это нужно для того, чтобы программа могла обновлять токен аутентификации Госуслуг и  продолжать работу даже после истечения исходного токена. 
     Чтобы получить исходные значения access_token, refresh_token и auth_access_token_expires, нужно в Google Chrome зайти на сайт 
@@ -95,16 +97,16 @@ def download_nspd_layer(
         tiles_gpkg (str, optional): Относительный путь к Geopackage со слоем тайлов. Defaults to 'tiles.gpkg'.
         tiles_layer (str, optional): Слой с тайлами. Тайлы можно создать в QGIS инструментом Create grid. 
         Рекомендуемый размер тайлов 78271.517000 x 78271.517000 м. Проекция EPSG:3857. Defaults to 'khmao'.
-        width (int, optional): Ширина тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 512.
-        height (int, optional): Высота тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 512.
+        width (int, optional): Ширина тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 128.
+        height (int, optional): Высота тайла в пикселах. Рекомендуется 128. Протестировано 512 и 256. Defaults to 128.
         i_from (int, optional): Начало отсчета столбцов пикселов. Defaults to 0.
-        i_to (int, optional): Конец отсчета столбцов пикселов. Не может быть больше чем ширина тайла. Defaults to 512.
+        i_to (int, optional): Конец отсчета столбцов пикселов. Не может быть больше чем ширина тайла. Defaults to 128.
         j_from (int, optional): Начало отсчета строк пикселов. Defaults to 0.
-        j_to (int, optional): Конец отсчета строк пикселов. Не может быть больше чем высота тайла. Defaults to 512.
+        j_to (int, optional): Конец отсчета строк пикселов. Не может быть больше чем высота тайла. Defaults to 128.
         pixel_step (int, optional): Шаг перебора пикселов. Может быть от 1 до любого значения (не больше минимального из ширины/высоты). 
         Это промежуток, через который будет выполняться запрос GetFeatureInfo в пикселе. Если 1, то запрос будет в каждом пикселе.
         Общее количество запросов обратно пропорционально квадрату этого шага. Для среднестатистического региона РФ нет смысла брать меньше 3,
-        т.к. иначе парсинг выпоняется очень долго. Для больших регионов, как ХМАО, протестирован шаг 5. Defaults to 3.
+        т.к. иначе парсинг выпоняется очень долго. Для больших регионов, как ХМАО, протестирован шаг 9. Defaults to 3.
         access_token (str, optional): Ключ безопасности, первоначальное згачение. Чтобы его получить, нужно в Google Chrome зайти на сайт 
         https://nspd.gov.ru/map, залогиниться через Госуслуги (часть слоев на карте доступны и без логина. Если нужны эти слои, то логиниться не обязательно). 
         Затем включить devtools (F12), перейти в раздел Network. 
@@ -114,23 +116,36 @@ def download_nspd_layer(
         но взять параметр authRefreshToken. Defaults to ''.
         auth_access_token_expires (str, optional): срок истечения ключа безопасности, первоначальное значение. Получать аналогично access_token,
         но взять параметр authAccessTokenExpires. Пример - %222025-08-24T06%3A16%3A00.521Z%22. Defaults to ''.
+        pause (int, optional): пауза между запросами GetFeatureInfo, чтобы снизить риск обвинений в атаке. Defaults to 0.
 
     Returns:
         tuple: В случае успешного выполнения, функция сохраняет загруженные данные в файл results/<tiles_layer>_<layer_alias>.json
         в формате GeoJSON, А ТАКЖЕ возвращает кортеж с последними актуальными значениями access_token, refresh_token, auth_access_token_expires.
-        Это можно для запуска функции в цикле для нескольких слоев.
+        Это можно использовать для запуска функции в цикле для нескольких слоев.
     """
     # Это чтобы не валились постоянно сообщения о неподтвержденности сертификата. Российские сертификаты сейчас все неподтвержденные.
     from urllib3.exceptions import InsecureRequestWarning
     urllib3.disable_warnings(InsecureRequestWarning)
     
-    auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
-    auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
-    utc_tz = pytz.timezone('utc')
-    auth_access_token_expires_dt = utc_tz.localize(auth_access_token_expires_dt)
+    # Конвертация времени истечения токена в datetime
+    try:
+        auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
+        auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
+        utc_tz = pytz.timezone('utc')
+        auth_access_token_expires_dt = utc_tz.localize(auth_access_token_expires_dt)    # Это чтобы время было локализовано в UTC
+    except Exception:
+        raise ValueError("некорректный параметр auth_access_token_expires")
+    
+    if any([not access_token, not refresh_token]):
+        raise ValueError("Не заданы токены access_token и/или refresh_token")
+    
+    # Создать папку results, если ее нет
     current_dir = os.getcwd()
+    if not os.path.isdir(os.path.join(current_dir, 'results')):
+        os.mkdir(os.path.join(current_dir, 'results'))
+    
     tiles_gpkg_fullpath = os.path.join(current_dir, tiles_gpkg)
-    if os.path.exists(tiles_gpkg_fullpath):
+    if os.path.exists(tiles_gpkg_fullpath) and access_token and refresh_token and auth_access_token_expires:
         geojson_result = {
             "type": "FeatureCollection",
             "features": []
@@ -158,6 +173,7 @@ def download_nspd_layer(
         gdf = pd.read_file(tiles_gpkg_fullpath, layer=tiles_layer)
         with Session() as s:
             # https://tqdm.github.io/docs/tqdm/
+            # stdout будет показывать прогресс-бар по перебору тайлов
             for index, row in tqdm(gdf.iterrows(), desc='tiles loop', total=gdf.shape[0]):
                 xmin, ymin, xmax, ymax = row['geometry'].bounds
                 headers = {
@@ -168,30 +184,26 @@ def download_nspd_layer(
                         # "cookie": cookie
                         }
                 params["BBOX"] = f"{xmin},{ymin},{xmax},{ymax}"
-                # for i in tqdm(range(i_from, i_to + 1, pixel_step), desc='i index'):
                 for i in range(i_from, i_to + 1, pixel_step):
                     params["I"] = str(i)
                     for j in range(j_from, j_to + 1, pixel_step):
                         params["J"] = str(j)
-                        # %222025-08-22T11%3A34%3A47.750Z%22
-                        # auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
-                        # auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
                         cur_datetime_utc = datetime.now(timezone.utc)
-                        pass
+                        # Обновляем токен за 10 минут до его истечения, т.к. если сайт остался открытым в браузере, то там обновление идет за несколько минут до срока
                         if auth_access_token_expires_dt <= cur_datetime_utc + timedelta(minutes=10):
                             refreshed_auth = request_refresh_token(s, refresh_token)
                             auth_access_token_expires_dt = cur_datetime_utc + timedelta(seconds=int(refreshed_auth.get('expires_in')))
                             access_token = refreshed_auth.get('access_token')
                             refresh_token = refreshed_auth.get('refresh_token')
-                        pass
                         headers['Authorization'] = f"Bearer {access_token}"
+                        if pause > 0:
+                            sleep(pause)                            
                         status, result = smart_http_request(s, url=url, params=params, headers=headers)
                         # result = s.get(url, params=params, headers=headers, verify=False)
                         # status = result.status_code
                         if status == 200:
                             jdata = result.json()
                             for feature in jdata["features"]:
-                                # if feature["properties"]["options"]["guid"] not in [x["properties"]["guid"] for x in geojson_result.get("features")]:
                                 if feature["id"] not in [x["id"] for x in geojson_result.get("features")]:
                                     for k, v in feature["properties"]["options"].items():
                                         feature["properties"][k] = v
@@ -247,7 +259,8 @@ if __name__ == '__main__':
                 pixel_step=9,                               # Для ХМАО рекомендовано 9. Для регионов поменьше можно 3.
                 access_token=access_token,                  # при первом запуске цикла берутся значения, заданные в разделе "ЗАМЕНИТЬ!!!". Потом будут браться автоматом из данных, возвращаемых функцией.
                 refresh_token=refresh_token,
-                auth_access_token_expires=auth_access_token_expires
+                auth_access_token_expires=auth_access_token_expires,
+                pause=0
             )
 
 # Запуск скрипта:
