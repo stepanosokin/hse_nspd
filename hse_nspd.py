@@ -159,7 +159,7 @@ def download_nspd_layer(
                 "STYLES": "",
                 "TRANSPARENT": "true",
                 "LAYERS": nspd_layer,
-                "RANDOM": "0.4158997836664142",
+                "RANDOM": "0.32651699381268684",
                 "INFO_FORMAT": "application/json",
                 "FEATURE_COUNT": "10",
                 "I": "0",
@@ -177,9 +177,23 @@ def download_nspd_layer(
             for index, row in tqdm(gdf.iterrows(), desc='tiles loop', total=gdf.shape[0]):
                 xmin, ymin, xmax, ymax = row['geometry'].bounds
                 headers = {
-                        "Referer": f"https://nspd.gov.ru/map?thematic=Default&zoom=14.087600258143208&coordinate_x={str((xmin + xmax) / 2)}&coordinate_y={str((ymin + ymax) / 2)}&theme_id=1&is_copy_url=true&active_layers={nspd_layer}",
+                        "accept": '*/*',
+                        "accept-encoding": "gzip, deflate, br, zstd",
+                        "accept-language": "en,ru;q=0.9,en-GB;q=0.8,en-US;q=0.7",
+                        "cache-control": "no-cache",
                         "Dnt": "1",
-                        "Origin": "https://nspd.gov.ru",
+                        "pragma": "no-cache",
+                        "priority": "u=1, i",                        
+                        # "Referer": f"https://nspd.gov.ru/map?thematic=Default&zoom=14.087600258143208&coordinate_x={str((xmin + xmax) / 2)}&coordinate_y={str((ymin + ymax) / 2)}&theme_id=1&is_copy_url=true&active_layers={nspd_layer}",
+                        "Referer": f"https://nspd.gov.ru/map?zoom=14.087600258143208&coordinate_x={str((xmin + xmax) / 2)}&coordinate_y={str((ymin + ymax) / 2)}&baseLayerId=235&theme_id=99&is_copy_url=true&active_layers={nspd_layer}",
+                        "sec-ch-ua": '"Not;A=Brand";v="99", "Microsoft Edge";v="139", "Chromium";v="139"',
+                        "sec-ch-ua-mobile": "?0",
+                        "sec-ch-ua-platform": '"Windows"',
+                        "sec-fetch-dest": "empty",
+                        "sec-fetch-mode": "cors",
+                        "sec-fetch-site": "same-origin",
+                        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36 Edg/139.0.0.0",                        
+                        # "Origin": "https://nspd.gov.ru",
                         'Authorization': f"Bearer {access_token}"
                         # "cookie": cookie
                         }
@@ -204,6 +218,7 @@ def download_nspd_layer(
                         if status == 200:
                             jdata = result.json()
                             for feature in jdata["features"]:
+                                pass
                                 if feature["id"] not in [x["id"] for x in geojson_result.get("features")]:
                                     for k, v in feature["properties"]["options"].items():
                                         feature["properties"][k] = v
@@ -226,7 +241,8 @@ if __name__ == '__main__':
         {"shortname": "югра_уч_доп_пи_и_др", "id": "847178", "fullname": "ЮГРА - Участки недр, предоставленных для добычи полезных ископаемых, а также в целях, не связанных с их добычей"},
         {"shortname": "югра_местор_пи_пол", "id": "847284", "fullname": "ЮГРА - Месторождения и проявления полезных ископаемых (полигон)"},
         {"shortname": "югра_местор_пи_тчк", "id": "848623", "fullname": "ЮГРА - Месторождения и проявления полезных ископаемых (точка)"},
-        {"shortname": "югра_функц_зон", "id": "847282", "fullname": "ЮГРА - Функциональные зоны"}
+        {"shortname": "югра_функц_зон", "id": "847282", "fullname": "ЮГРА - Функциональные зоны"},
+        {"shortname": "сан_курорт", "id": "848566", "fullname": "Объекты санаторно-курортного назначения"}
     ]
     
     # Перед использованием нужно зайти на https://nspd.gov.ru/map браузером, залогиниться, включить нужный слой на карте,
@@ -242,19 +258,20 @@ if __name__ == '__main__':
     # refresh_token = 'c7M8ixRGrknyW4xuDAkcQxRdWbhluEvR6Qf7Ki70aL2ALxLyaJqfj0p3knOQOqu4o7w1ZZeAQRNQrafJy5'
        
     # ЗАМЕНИТЬ!!!
-    access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU2MDE2MTYwLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTYwMTQzNjAsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiYjZmM2FlZjYtZjVhYS00MDUwLWFlNWUtY2IwN2E0MjQwYzBhIiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWIyYjg0MDgtZWIwNy00ODJkLWJlZTctZTIzZTYzYTBhMzBhIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NjAxNDM1OX0.cFwxfgsemLKEzWx-bIAlSI0amLRP66vceiQBGPYSXk0WmqGk9PZVoLlTsOiLF3zcrWRuY-LOf-k7wT7j10GUu6hQiqEDrhaR3x2kGy0LqfSHl-9cB9LjVqbg8NoMS-LGU6NduBLK1SZj1sdgDRj2YjemmLmmSYEl1S8DKe-nlvyJ6HCVf4cpsgHwEtyoKCuVNHrI7DKA2Gxj29tBFFnJULesX46W_EpV3jKQ9mkSLoexmPzaWpzWwyW5prPI4qgMRqQXCfV4e_-TsYcyaIwi10vMGcw_70ouQcExRxPSLul2YoHlpBS6jCYyHDZi9UgKbSiOyHn-AWeHGr3EbAP1VUdkRH5kfEG4kI48mZnqMzbfz5R-Dxp3joLK0FfyQGdRrPMw-F6F_r3Vj9FfuhI4Qs0yywJh8BA96oHSyZTklgHyqHnnlKD4MmIbev8FVR-sogtmA_XCeTuEYIj9csDLaGWH7Z2Rq8d7UfwMbNUYbkNLzsHzx_pHtAjiazIkdpCG7rrfx6deLaXiIPFQqvawgBXihK4-b-GiXbFKYv-WVsg_9nUF8J61TnDvmlyDLBdAt4Rgoqo-CCl_AYX1jNpfsvUB8uePWNXv0czgBA7v_RRBcdkgz88pIE61gObMQp_0e2PSUe7JpPxJt1_rnn_Dprol13GN6KhTGbhrUPouoOw'
-    auth_access_token_expires = '%222025-08-24T06%3A16%3A00.521Z%22'
-    refresh_token = 'c7M7affFxZgI5puxWsRNH0SFMjBXpqiIbgkxkEFOvWnCYprkX8ShBkgTtN9zWu9fvYSAJdylTh6WW6EC0u'    
+    # cookie = '_ym_uid=1757065220249938669; _ym_d=1757065220; _ym_isad=1; _ym_visorc=w; authAccessToken=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU3MDcyMzc3LCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTcwNzA1NzcsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiNTViZWM3MWQtMGQ0MC00NWNkLWE5Y2ItODEyODQyMjk0Mzc1IiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWJhYTI2ZDktNTMyMy00MGU1LTgxOTktMzZjOGY3MWVhNTRjIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NzA3MDU3NX0.FPMw5VrSODeJ7d4EiOYMHFlNaS9FMCg7LCveRrloD0qhJNZVT-jC47G2kprQQw_HUbLbQSHPNER95FOdjbk4RfusqBfAHr7_cx4L7J9EPJL8hMOk5qKqxNn_uX84NmgBD7Nz8pyuY_JMWIWhRurle6ntYkOUy0x9L9mHfVFmEQXKt_MTTmVdgmIfI6imKluB8jiWbbBVOEm2oktdscU5epgLQeMPRLBC9rBcq3mgrLuYSLXkcxyEdIZ_V16xpzlcyLUNDCo_nR4Y-PcmlOzRQW84LuQs-xNpoEWlalhr6Zs2NQ-2Y-PSHfppe2VPzbi4-rXrcGsAgBTtrI5iy--YLLlkg8H_qZNxYhSyRXTIP8-cSc1fFU0jfD6pD3oF1KJvERqiUoqYfXLRRNkD3Mk8DLVvWtdTU5Sa3_qPNMfefcrSjht4EZayK_I5azSgedjFT3JVTgOBkHx3SX3GE2i-SdKS5OviTHjCIka-JjE1a4utWAqkJAAyPeD-YJ5tKGDjpiwystuyktzM1vpvscG5Yw590BrKxmXWjjQY79ykjVugg3dzWCNa9RDlEhgnBvxpKVn9M-PQ7M6PPpF-qdKhEWw9BlhfT3wvbAjllGJosszjScfQ7VQ2iDXe7v5ZvEMVrdDB9hjOXkkDKjuTmwfu-lYDeWjOF8hJTZodae6eXRI; authAccessTokenExpires=%222025-09-05T11%3A39%3A37.493Z%22; authRefreshToken=c7MJZk9xIUqKX5HwR6mLWpBS4HEvjUbeAStYhBnZiMvB7oMzQVqevP5IGbuEbJ6VlNkKA6WZLpmlCB6not'
+    access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU3MDc0MTc3LCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTcwNzIzNzcsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiOTU4ZjU4MDktYzBkZS00NmVkLWI4NjQtMmMzYjQwN2I4ODg0IiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWJhYTI2ZDktNTMyMy00MGU1LTgxOTktMzZjOGY3MWVhNTRjIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NzA3MDU3NX0.AzNAuxT4VaQ08OqVr_deVoppF0EmtZCCPkaIazBAbS4Q9VHSXAMU0GzkkTjyFXXcC6xZGtzCreXlvtzAeKBX1G2gyrBqhpObKjvhfjtUIM8CjltgYwjTcf3q5JWkNveTP8EjMrYWxNmnJJa04gG8cXLpnClqd9ns4oXcWlk7UcSkO4xBlpCHGdMxTU_XjI7mAXjIiVh6uXXfjZVC7bvVCLMWyVq01nM1M3aUila6cMb-lOJP0mf34KUYoTGiN4bwXRrW5b7m4wLlZ3ShBvtTvU20G_n05ao_ffS05DHoz3Nbh50QtnDI7LlFbJ5RCikRLYP9KBk6CstsORQ6ku5iRhiPBNho2b7DooTaDrY9KuX4TO8dCFIsWoRzZRrro4KO1y0NHg3QZqwws2HU5CYTs9K_dB_f-rihhvcsYcNa6ygMq3QpoBdPMx6BqFGzPc-rAXVEmcD4ahvt_NT_9Y9KV0jUo10kRXIQjjAiv4wLmwO5YsrulMhHRZ9a5-UIAq4Slrv3DnlsgJOXvKKHEqBNsgoQFMdUisqpVZ9SApckdhhj_8mZYGYsmRuej4X3ICtZrBdZvYyOpjSa173344fcmpy-3IRVvFA10c48vQeQQ9wZZqCGyimd1myWY39GTUd4dmeAVMUG6Wrm1gjpRJGL80IAheklOSBbenpmG0ohUnQ'
+    auth_access_token_expires = '%222025-09-05T12%3A09%3A37.908Z%22'
+    refresh_token = 'c7MJb0g1hFrZdKxuRCR6GrMIJP8zxjbVkCH3PIooOlirrL0VWBx9vOkx6L7p14wRDprC4unkeYSWYGfLh4'    
     
     # пример того, как можно перебирать слои в цикле и парсить по очереди.
     for layer in nspd_layers:
-        if layer['shortname'] == 'югра_маг_труб':   # это просто чтобы парсить какой-то один слой, можно и убрать
+        if layer['shortname'] == 'югра_доб_транс_газ':   # это просто чтобы парсить какой-то один слой, можно и убрать
             access_token, refresh_token, auth_access_token_expires = download_nspd_layer(
                 nspd_layer=layer['id'],                     # идентификатор слоя, взятый из URL запроса на nspd.gov.ru/map
                 layer_alias=layer['shortname'],             # любое короткое имя слоя
                 tiles_gpkg='tiles.gpkg',
-                tiles_layer='khmao',                        # В Geopackage должен быть этот слой с тайлами
-                width=128, height=128,                      # рекомендованные значения для размера тайла 78271.517x78271.517
+                tiles_layer='test2',                        # В Geopackage должен быть этот слой с тайлами
+                width=128, height=128,                      # рекомендованные значения для размера тайла 128x128
                 i_from=0, i_to=128, j_from=0, j_to=128,     # в общем случае, должно совпадать с widht и height
                 pixel_step=9,                               # Для ХМАО рекомендовано 9. Для регионов поменьше можно 3.
                 access_token=access_token,                  # при первом запуске цикла берутся значения, заданные в разделе "ЗАМЕНИТЬ!!!". Потом будут браться автоматом из данных, возвращаемых функцией.
@@ -262,6 +279,7 @@ if __name__ == '__main__':
                 auth_access_token_expires=auth_access_token_expires,
                 pause=0
             )
+            print(f"access_token: {access_token}; refresh_token: {refresh_token}; auth_access_token_expires: {auth_access_token_expires}")
 
 # Запуск скрипта:
 # 1. Установить uv https://docs.astral.sh/uv/getting-started/installation/
