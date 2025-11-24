@@ -64,7 +64,18 @@ def request_refresh_token(s: Session, refresh_token=''):
         raise Exception(f"Не удалось обновить токен. Результат запроса: {result.content}")    
 
 
-def download_nspd_settlements(s: Session, tiles_gpkg='tiles.gpkg', tiles_layer='kaluga', width=512, height=512, i_from=0, i_to=512, j_from=0, j_to=512, pixel_step=3):    
+def download_nspd_settlements(
+    s: Session, 
+    tiles_gpkg='tiles.gpkg', 
+    tiles_layer='kaluga', 
+    width=512, 
+    height=512, 
+    i_from=0, 
+    i_to=512, 
+    j_from=0, 
+    j_to=512, 
+    pixel_step=3
+):    
     current_dir = os.getcwd()
     tiles_gpkg_fullpath = os.path.join(current_dir, tiles_gpkg)
     if os.path.exists(tiles_gpkg_fullpath):
