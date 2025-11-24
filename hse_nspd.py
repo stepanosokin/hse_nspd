@@ -75,7 +75,11 @@ def download_nspd_settlements(
     j_from=0, 
     j_to=512, 
     pixel_step=3
-):    
+):
+    # Это чтобы не валились постоянно сообщения о неподтвержденности сертификата. Российские сертификаты сейчас все неподтвержденные.
+    from urllib3.exceptions import InsecureRequestWarning
+    urllib3.disable_warnings(InsecureRequestWarning)
+
     current_dir = os.getcwd()
     tiles_gpkg_fullpath = os.path.join(current_dir, tiles_gpkg)
     if os.path.exists(tiles_gpkg_fullpath):
@@ -88,7 +92,8 @@ def download_nspd_settlements(
         gdf = pd.read_file(tiles_gpkg_fullpath, layer=tiles_layer)
         # ds = driver.Open(tiles_gpkg_fullpath)
         # layer = ds.GetLayer(tiles_layer)
-        if layer:
+        # if layer:
+        if not gdf.empty:
             url = "https://nspd.gov.ru/api/aeggis/v3/36281/wms"
             params = {
                 "REQUEST": "GetFeatureInfo",
