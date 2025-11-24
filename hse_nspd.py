@@ -68,12 +68,12 @@ def download_nspd_settlements(
     s: Session, 
     tiles_gpkg='tiles.gpkg', 
     tiles_layer='kaluga', 
-    width=512, 
-    height=512, 
+    width=128, 
+    height=128, 
     i_from=0, 
-    i_to=512, 
+    i_to=128, 
     j_from=0, 
-    j_to=512, 
+    j_to=128, 
     pixel_step=3
 ):
     # Это чтобы не валились постоянно сообщения о неподтвержденности сертификата. Российские сертификаты сейчас все неподтвержденные.
@@ -132,10 +132,12 @@ def download_nspd_settlements(
                         if status == 200:
                             jdata = result.json()
                             # geojson_result["features"].extend(jdata["features"])
+                            flag = False
                             for feature in jdata["features"]:
                                 # if feature["properties"]["options"]["guid"] not in [x["properties"]["options"]["guid"] for x in geojson_result.get("features")]:
                                 #     geojson_result["features"].append(feature)
                                 if feature["properties"]["options"]["guid"] not in [x["properties"]["guid"] for x in geojson_result.get("features")]:
+                                    flag = True
                                     for k, v in feature["properties"]["options"].items():
                                         feature["properties"][k] = v
                                     feature["properties"].pop('options', None)
