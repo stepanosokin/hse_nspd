@@ -72,17 +72,18 @@ def download_nspd_settlements(
     s: Session, 
     tiles_gpkg='tiles.gpkg', 
     tiles_layer='kaluga', 
-    width=512, 
-    height=512, 
+    width=128, 
+    height=128, 
     i_from=0, 
-    i_to=512, 
+    i_to=128, 
     j_from=0, 
-    j_to=512, 
+    j_to=128, 
     pixel_step=3
 ):
     # Это чтобы не валились постоянно сообщения о неподтвержденности сертификата. Российские сертификаты сейчас все неподтвержденные.
     from urllib3.exceptions import InsecureRequestWarning
     urllib3.disable_warnings(InsecureRequestWarning)
+
     current_dir = os.getcwd()
     tiles_gpkg_fullpath = os.path.join(current_dir, tiles_gpkg)
     if os.path.exists(tiles_gpkg_fullpath):
