@@ -224,10 +224,16 @@ def download_nspd_layer(
     
     # Конвертация времени истечения токена в datetime
     try:
-        auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
-        auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
-        utc_tz = pytz.timezone('utc')
-        auth_access_token_expires_dt = utc_tz.localize(auth_access_token_expires_dt)    # Это чтобы время было локализовано в UTC
+        # Старый механизм, когда изначально задается auth_access_token_expires
+        if False:
+            auth_access_token_expires = utils.unquote(auth_access_token_expires).replace('"', '')
+            auth_access_token_expires_dt = datetime.strptime(auth_access_token_expires, '%Y-%m-%dT%H:%M:%S.%fZ')
+            utc_tz = pytz.timezone('utc')
+            auth_access_token_expires_dt = utc_tz.localize(auth_access_token_expires_dt)    # Это чтобы время было локализовано в UTC
+        # Новый  механизм, когда изначально берется текущее время + 25 минут (потому что в куки сессии на сайте nspd.gov.ru/map больше нет этого параметра)
+        if True:
+            cur_datetime_utc = datetime.now(timezone.utc)
+            auth_access_token_expires_dt = cur_datetime_utc + timedelta(seconds=1500)
     except Exception:
         raise ValueError("некорректный параметр auth_access_token_expires")
     
@@ -354,7 +360,8 @@ if __name__ == '__main__':
             # {"shortname": "зоуит", "id": "37581", "fullname": "Объекты санаторно-курортного назначения"}
             # {"shortname": "наспункты", "id": "36281", "fullname": "Границы населенных пунктов"}
             # {"shortname": "тюм_адм", "id": "846299", "fullname": "Границы АТД"},
-            {"shortname": "тюм_водоотв", "id": "848282", "fullname": "Водоотводы"}
+            # {"shortname": "тюм_водоотв", "id": "848282", "fullname": "Водоотводы"},
+            {"shortname": "границы_нас_пунктов", "id": "875831", "fullname": "Границы населенных пунктов"}
         ]
         
         # Перед использованием нужно зайти на https://nspd.gov.ru/map браузером, залогиниться, включить нужный слой на карте,
@@ -371,9 +378,9 @@ if __name__ == '__main__':
         
         # ЗАМЕНИТЬ!!!
         # cookie = '_ym_uid=1757065220249938669; _ym_d=1757065220; _ym_isad=1; _ym_visorc=w; authAccessToken=eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzU3MDcyMzc3LCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NTcwNzA1NzcsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiNTViZWM3MWQtMGQ0MC00NWNkLWE5Y2ItODEyODQyMjk0Mzc1IiwibG9jYWxlIjoiZW4iLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiNWJhYTI2ZDktNTMyMy00MGU1LTgxOTktMzZjOGY3MWVhNTRjIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc1NzA3MDU3NX0.FPMw5VrSODeJ7d4EiOYMHFlNaS9FMCg7LCveRrloD0qhJNZVT-jC47G2kprQQw_HUbLbQSHPNER95FOdjbk4RfusqBfAHr7_cx4L7J9EPJL8hMOk5qKqxNn_uX84NmgBD7Nz8pyuY_JMWIWhRurle6ntYkOUy0x9L9mHfVFmEQXKt_MTTmVdgmIfI6imKluB8jiWbbBVOEm2oktdscU5epgLQeMPRLBC9rBcq3mgrLuYSLXkcxyEdIZ_V16xpzlcyLUNDCo_nR4Y-PcmlOzRQW84LuQs-xNpoEWlalhr6Zs2NQ-2Y-PSHfppe2VPzbi4-rXrcGsAgBTtrI5iy--YLLlkg8H_qZNxYhSyRXTIP8-cSc1fFU0jfD6pD3oF1KJvERqiUoqYfXLRRNkD3Mk8DLVvWtdTU5Sa3_qPNMfefcrSjht4EZayK_I5azSgedjFT3JVTgOBkHx3SX3GE2i-SdKS5OviTHjCIka-JjE1a4utWAqkJAAyPeD-YJ5tKGDjpiwystuyktzM1vpvscG5Yw590BrKxmXWjjQY79ykjVugg3dzWCNa9RDlEhgnBvxpKVn9M-PQ7M6PPpF-qdKhEWw9BlhfT3wvbAjllGJosszjScfQ7VQ2iDXe7v5ZvEMVrdDB9hjOXkkDKjuTmwfu-lYDeWjOF8hJTZodae6eXRI; authAccessTokenExpires=%222025-09-05T11%3A39%3A37.493Z%22; authRefreshToken=c7MJZk9xIUqKX5HwR6mLWpBS4HEvjUbeAStYhBnZiMvB7oMzQVqevP5IGbuEbJ6VlNkKA6WZLpmlCB6not'
-        access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzc1ODEwMjIxLCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NzU4MDg0MjEsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiYTEwNDIyNWQtNDE3OC00ZWQ3LWI4MTctZTNkYjliNDY1ZTE3IiwibG9jYWxlIjoicnUiLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiOGI5ZWVkNzQtNmM4MS00YjQ1LWEyNzEtZDVhMWQ5MzY2ZjQyIiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc3NTgwODQyMX0.jYCLixJ6OrMuKXsFCyDCrkEVQpUmystrUFbMFEpfROIAW3gHNdjTq_ofbtMZi337BXuxli_pO2BibMXQ0rcbvLp4qLzqPGlU8BW4_M0hA4j0-UT_UQt8WZ22GTn7OQOIXbsFWvpplPdjIOEcT-nbA2FjOPEzmBoaO3eB_WTbcHCqTaWDRzL0RMhCDT32PxGjl274S8MDLOxyLVCfrKuV6nqyk2-9-A3WAxvCksde7u56xmup-efJqeW1MozjE3QHgE3QDgGdYg2kNEu5pDpT_GAk6J7FZhvYB9Hv8MlnL1MY0ONcHCf20PH4YSO2iETFhEmD1hmGSNu4Tij72ojsiy5t41UQ98SyP9qR70_DMACamo_G-z4PWYLTTPiIWJHBEu7X_4bjTc4K83XNCPu0-dasGPdR-omGiUvMTukwdje7EgAKVUUUFsqG3sDEc22Ws84gEymSTH5_mL0u1c9AfknQ962191U6HELhmtKcXKl0wb74E6q8SzKpiZv9XHeUFjjJcpQGQsD5lfYIytY53OtJANubNDuNdNOzIZTgxmkrFMS_4lZK8h2sEIC4eeEo6FUhhPCtfDlhLyGrJ4uaV2vEA0W4OYR2j5NHy0g6UsKIRXLHs-g0O1FSWwPQboxSR3NhN1vTJcW-ega6CVwEs7RZ1mO47V5efK58DUscog4'
-        auth_access_token_expires = '%222026-04-10T11%3A30%3A35.910Z%22'
-        refresh_token = 'c7PkCEljAEzZMx7y0yv2SOCwJM5gh3c9YO1zxG0C0WYIHW7vhMbJlZVURDQEQlMOuhWzfbTH9oMJ8uBvVE'    
+        access_token = 'eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJhdWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJjbGllbnRfaWQiOiIwMzM4NmRiZS01MTg1LTRiOTYtOTAwZC1jMmIxYmIzNjhlZDYiLCJkaXNwbGF5X25hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsImVtYWlsIjoic3RlcGFub3Nva2luQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjpmYWxzZSwiZXhwIjoxNzc4MDYzODA0LCJleHBpcmVzX2luIjoxODAwLCJmYW1pbHlfbmFtZSI6ItCe0YHQvtC60LjQvSIsImdpdmVuX25hbWUiOiLQodGC0LXQv9Cw0L0iLCJpYXQiOjE3NzgwNjIwMDQsImlzcyI6Imh0dHBzOi8vc3NvLm5zcGQuZ292LnJ1IiwianRpIjoiMzliYjYyMTMtNmIyMS00MGFjLWI4Y2MtNDI3MmViNzJlMWZlIiwibG9jYWxlIjoicnUiLCJtaWRkbGVfbmFtZSI6ItCQ0YDRgtC10LzQvtCy0LjRhyIsIm5hbWUiOiLQntGB0L7QutC40L0g0KHRgtC10L_QsNC9INCQ0YDRgtC10LzQvtCy0LjRhyIsInByZWZlcnJlZF91c2VybmFtZSI6InAtMTIxLTI5OS02MTcgNTEiLCJzY29wZSI6InByb2ZpbGUgZW1haWwgdWlkIiwic2lkIjoiZWJiNzA4NDktOWE0YS00ZTRmLWJiYTYtNmYzZGYzYWJjN2Y0Iiwic3ViIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidWlkIjoiMjQxNWUzM2ItZmU4OC00Y2IzLWE4ZTctNDIyNjQyOTU0OGE5IiwidXBkYXRlZF9hdCI6MTc3ODA2MjAwNH0.M-E3NcBivpLH-kSPbr8xKgcZPUOubHniUiVDHFn0kYK1gxUoD8SQlOi1Bbun1_aFJI5P9emllB4LuEbr5Y4PmqsdGjL2aOo8ROFIJtdS7PhWyzOlSEKb0Pzjy9YDVa_qQi-YmdxyWwtYkOWz0Y3J0BcXCIOwOzG2yzxPN9apRV3qZ72d3bzRvKLrbxqtnjEsXnRpdld3Ss2UUCGbOKjV7nSZwycUvorVQtHfEOP5mHpf5zx6IReXMtglmE4KY9kCMdZTmZ5QyypJIAYtSP_s5wgBQNCJday6dR6uha7m3rTKElP9Mhp295hwd0-yEhBF_NUM1KKxZG-KjcVo8lWa2Z7Vg_xrYPwlGFogrIlhVy7g5mZD10y_N74yzVLHUbj9VK7gUWzOGi1-oaUs2D2-GkgmAeptPOfv0dEW0hN4Q0FE6TAB2qVxvdSXz_xwmAycE2N3D_MdIS5-jqlwxB5BCs33mZuhR5N-nY8U-htwD_XFK2Os51Xz6VekkIzpstgWPajCWxpEoYs9Zg_M2l2oVUARqOk2KhWbHZa_opr-l3Fa0U-mWOueLOGt52pbAGNHKcSVbeB_gAkrYih-jgVapOmcyOM9TygWDOPVwsoG1szziOl-ED7ZWkqWopc4IYg13xIYP5GoJd6AUNr_VbFcuuBnvpsjG7i8TL5qlR3GL_w'
+        auth_access_token_expires = '%222026-05-06T13%3A30%3A35.910Z%22'
+        refresh_token = 'c7Q9lgRFVdDQ0afPVauKFAVN4ezIlixAlq2vA86YaWMYnNEhjqxvYURzTkOBLSHQLu3bBLkv0kaBI59U2c'    
         
         # пример того, как можно перебирать слои в цикле и парсить по очереди.
         for layer in nspd_layers:
@@ -382,7 +389,7 @@ if __name__ == '__main__':
                 nspd_layer=layer['id'],                     # идентификатор слоя, взятый из URL запроса на nspd.gov.ru/map
                 layer_alias=layer['shortname'],             # любое короткое имя слоя
                 tiles_gpkg='tiles.gpkg',
-                tiles_layer='test2',                        # В Geopackage должен быть этот слой с тайлами
+                tiles_layer='belgorod',                        # В Geopackage должен быть этот слой с тайлами
                 width=128, height=128,                      # рекомендованные значения для размера тайла 128x128
                 i_from=0, i_to=128, j_from=0, j_to=128,     # в общем случае, должно совпадать с widht и height
                 pixel_step=5,                               # Для ХМАО рекомендовано 9. Для регионов поменьше можно 3.
